@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Bingo - Fondo Aplicado</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .controls {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 1.1em;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        input[type="number"], input[type="text"], input[type="color"], select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ced4da;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="file"] {
+            padding: 8px;
+            border: 2px dashed #ced4da;
+            border-radius: 8px;
+            width: 100%;
+            background: white;
+        }
+
+        .logo-preview, .bg-preview {
+            margin-top: 10px;
+            max-width: 200px;
+            max-height: 100px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            display: none;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: block;
+            margin: 20px auto;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .preview-section {
+            padding: 30px;
+            display: none;
+        }
+
+        .preview-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .bingo-card-preview {
+            width: 9cm;
+            height: 12cm;
+            background: white;
+            border: 3px solid #333;
+            border-radius: 10px;
+            padding: 10px;
+            margin: 10px auto;
+            display: inline-block;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .preview-bingo-header, .bingo-header {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 2px;
+            margin-bottom: 5px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .preview-bingo-letter, .bingo-letter {
+            text-align: center;
+            font-weight: bold;
+            font-size: 26px;
+            padding: 5px;
+            border: 2px solid #333;
+            border-radius: 5px;
+        }
+
+        .preview-bingo-grid, .bingo-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 2px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .preview-bingo-cell, .bingo-cell {
+            aspect-ratio: 1;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .preview-free-space, .free-space {
+            background: #ffebee;
+            font-size: 14px;
+            text-align: center;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bingo-card-preview.has-bg, .bingo-card.has-bg {
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎱 Generador Profesional de Bingo 🎱</h1>
+            <p>Crea cartones personalizados con números únicos en todo el juego</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-grid">
+                <div class="control-group">
+                    <label for="cardCount">Cantidad de Cartones (1-2000):</label>
+                    <input type="number" id="cardCount" min="1" max="2000" value="100">
+                </div>
+
+                <div class="control-group">
+                    <label for="bingoColor">Color del Encabezado B I N G O:</label>
+                    <input type="color" id="bingoColor" value="#667eea">
+                </div>
+
+                <div class="control-group">
+                    <label for="cardTitle">Título del Evento:</label>
+                    <input type="text" id="cardTitle" placeholder="Ej: BINGO FAMILIAR 2024" value="BINGO FAMILIAR">
+                </div>
+
+                <div class="control-group">
+                    <label for="titleFont">Fuente del Título:</label>
+                    <select id="titleFont">
+                        <option value="Helvetica">Helvetica (Arial)</option>
+                        <option value="Times">Times (Times New Roman)</option>
+                        <option value="Courier">Courier (Courier New)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="logoUpload">Cargar Logo (PNG transparente):</label>
+                    <input type="file" id="logoUpload" accept="image/png">
+                    <img id="logoPreview" class="logo-preview" alt="Vista previa del logo">
+                </div>
+
+                <!-- BOTÓN DE IMAGEN CORREGIDO -->
+                <div class="control-group">
+                    <label for="bgImageUpload">Imagen de Fondo (PNG/JPG):</label>
+                    <input type="file" id="bgImageUpload" accept="image/png,image/jpeg,image/jpg">
+                    <img id="bgPreview" class="bg-preview" alt="Vista previa del fondo">
+                </div>
+
+                <div class="control-group">
+                    <label for="numberColor">Color de Numeración:</label>
+                    <input type="color" id="numberColor" value="#333333">
+                </div>
+
+                <div class="control-group">
+                    <label for="numberFont">Fuente de Numeración:</label>
+                    <select id="numberFont">
+                        <option value="Helvetica">Helvetica (Impact)</option>
+                        <option value="Times">Times (Georgia)</option>
+                        <option value="Courier">Courier (Courier New)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- BOTÓN CON VALIDACIÓN ANTES DE GENERAR -->
+            <button id="generateBtn" onclick="validateAndGenerate()">🎲 Generar Cartones y Exportar a PDF</button>
+
+            <div class="loading" id="loadingSection">
+                <div class="spinner"></div>
+                <h3>Generando cartones únicos...</h3>
+                <p id="loadingText">Inicializando...</p>
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-section" id="previewSection">
+            <div class="preview-header">
+                <h2>Vista Previa del Cartón</h2>
+                <p>Así se verán tus cartones generados</p>
+            </div>
+            <div class="preview-container" id="previewContainer">
+                <!-- Vista previa aquí -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // VARIABLES GLOBALES
+        let usedNumbers = {
+            'B': new Set(),
+            'I': new Set(),
+            'N': new Set(),
+            'G': new Set(),
+            'O': new Set()
+        };
+        let logoData = null;
+        let bgImageData = null;
+        let bgImageFormat = null;
+
+        // VALIDAR ANTES DE GENERAR
+        function validateAndGenerate() {
+            if (bgImageData && !bgImageFormat) {
+                alert('❌ La imagen de fondo no está cargada correctamente. Vuelve a seleccionarla.');
+                return;
+            }
+            generateBingoCards();
+        }
+
+        // INICIALIZACIÓN
+        document.addEventListener('DOMContentLoaded', function() {
+            // Logo
+            document.getElementById('logoUpload').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                if (file.type === 'image/png') {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        logoData = event.target.result;
+                        document.getElementById('logoPreview').src = logoData;
+                        document.getElementById('logoPreview').style.display = 'block';
+                        updatePreview();
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    alert('❌ El logo debe ser PNG transparente.');
+                    e.target.value = '';
+                }
+            });
+
+            // IMAGEN DE FONDO
+            document.getElementById('bgImageUpload').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                // Validar tamaño (máximo 2MB)
+                const maxSize = 2 * 1024 * 1024;
+                if (file.size > maxSize) {
+                    alert(`⚠️ La imagen es muy grande (${(file.size/1024/1024).toFixed(2)}MB). Máximo: 2MB.`);
+                    e.target.value = '';
+                    bgImageData = null;
+                    bgImageFormat = null;
+                    document.getElementById('bgPreview').style.display = 'none';
+                    return;
+                }
+                
+                if (file.type === 'image/png' || file.type === 'image/jpeg' || file.type === 'image/jpg') {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        bgImageData = event.target.result;
+                        bgImageFormat = file.type === 'image/png' ? 'PNG' : 'JPEG';
+                        document.getElementById('bgPreview').src = bgImageData;
+                        document.getElementById('bgPreview').style.display = 'block';
+                        alert(`✅ Imagen cargada: ${bgImageFormat} (${(file.size/1024/1024).toFixed(2)}MB)`);
+                        updatePreview();
+                    };
+                    reader.onerror = function() {
+                        alert('❌ Error al leer la imagen.');
+                        bgImageData = null;
+                        bgImageFormat = null;
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    alert('❌ Formato no soportado. Usa PNG o JPG.');
+                    e.target.value = '';
+                    bgImageData = null;
+                    bgImageFormat = null;
+                }
+            });
+
+            // Actualizar vista previa
+            ['bingoColor', 'cardTitle', 'titleFont', 'numberColor', 'numberFont'].forEach(id => {
+                document.getElementById(id).addEventListener('input', updatePreview);
+            });
+
+            updatePreview();
+        });
+
+        // GENERAR NÚMEROS ÚNICOS
+        function generateUniqueNumber(column, min, max) {
+            const columnUsed = usedNumbers[column];
+            const available = [];
+            
+            for (let i = min; i <= max; i++) {
+                if (!columnUsed.has(i)) {
+                    available.push(i);
+                }
+            }
+            
+            if (available.length === 0) {
+                usedNumbers[column].clear();
+                for (let i = min; i <= max; i++) {
+                    available.push(i);
+                }
+            }
+            
+            const randomIndex = Math.floor(Math.random() * available.length);
+            const number = available[randomIndex];
+            columnUsed.add(number);
+            return number;
+        }
+
+        // GENERAR CARTÓN
+        function generateSingleCard(cardNumber) {
+            const card = {
+                number: cardNumber,
+                columns: {
+                    'B': [],
+                    'I': [],
+                    'N': [],
+                    'G': [],
+                    'O': []
+                }
+            };
+
+            for (let i = 0; i < 5; i++) {
+                card.columns['B'].push(generateUniqueNumber('B', 1, 15));
+                card.columns['I'].push(generateUniqueNumber('I', 16, 30));
+                card.columns['N'].push(generateUniqueNumber('N', 31, 45));
+                card.columns['G'].push(generateUniqueNumber('G', 46, 60));
+                card.columns['O'].push(generateUniqueNumber('O', 61, 75));
+            }
+
+            Object.keys(card.columns).forEach(col => {
+                card.columns[col].sort((a, b) => a - b);
+                if (col === 'N') {
+                    card.columns[col][2] = 'FREE';
+                }
+            });
+
+            return card;
+        }
+
+        // DIBUJAR CARTÓN EN PDF - MÉTODO SIMPLIFICADO Y ROBUSTO
+        function drawCardOnPDF(pdf, card, x, y, cardPositionOnPage) {
+            const bingoColor = document.getElementById('bingoColor').value;
+            const cardTitle = document.getElementById('cardTitle').value;
+            const titleFont = document.getElementById('titleFont').value;
+            const numberColor = document.getElementById('numberColor').value;
+            const numberFont = document.getElementById('numberFont').value;
+            
+            const cardWidth = 90;
+            const cardHeight = 120;
+            const cellSize = 14;
+            const margin = 8;
+            
+            const bingoRGB = hexToRgb(bingoColor);
+            const numberRGB = hexToRgb(numberColor);
+            
+            // === PASO 1: DIBUJAR IMAGEN DE FONDO (SI EXISTE) ===
+            if (bgImageData && bgImageFormat) {
+                try {
+                    // Dibujar imagen ANTES que todo, como fondo
+                    pdf.addImage(bgImageData, bgImageFormat, x, y, cardWidth, cardHeight);
+                } catch (e) {
+                    console.error('Error al dibujar fondo:', e);
+                    // Continuar sin imagen si falla
+                }
+            }
+            
+            // === PASO 2: DIBUJAR MARCO ===
+            pdf.setDrawColor(0, 0, 0);
+            pdf.setLineWidth(1.5);
+            pdf.rect(x, y, cardWidth, cardHeight, 'S');
+            
+            // === PASO 3: DIBUJAR CONTENIDO ===
+            let currentY = y + margin;
+            
+            // Logo
+            if (logoData) {
+                try {
+                    pdf.addImage(logoData, 'PNG', x + cardWidth/2 - 15, currentY, 30, 15);
+                    currentY += 20;
+                } catch (e) {
+                    console.warn('Logo no cargado:', e);
+                }
+            }
+            
+            // Título
+            pdf.setFont(titleFont, 'bold');
+            pdf.setFontSize(12);
+            pdf.text(cardTitle, x + cardWidth/2, currentY, { align: 'center' });
+            
+            // Número de cartón
+            currentY += 8;
+            pdf.setFont(numberFont, 'bold');
+            pdf.setTextColor(numberRGB.r, numberRGB.g, numberRGB.b);
+            pdf.setFontSize(14);
+            pdf.text(`Cartón ${cardPositionOnPage}`, x + cardWidth/2, currentY, { align: 'center' });
+            pdf.setTextColor(0, 0, 0);
+            
+            // Letras B I N G O
+            currentY += 10;
+            const letterWidth = cellSize;
+            const letters = ['B', 'I', 'N', 'G', 'O'];
+            
+            letters.forEach((letter, i) => {
+                const lx = x + margin + (i * letterWidth);
+                pdf.setFillColor(bingoRGB.r, bingoRGB.g, bingoRGB.b);
+                pdf.rect(lx, currentY, letterWidth, 8, 'F');
+                pdf.setDrawColor(0, 0, 0);
+                pdf.rect(lx, currentY, letterWidth, 8, 'S');
+                pdf.setFontSize(18);
+                pdf.setTextColor(255, 255, 255);
+                pdf.setFont(titleFont, 'bold');
+                pdf.text(letter, lx + letterWidth/2, currentY + 6, { align: 'center' });
+            });
+            
+            pdf.setTextColor(0, 0, 0);
+            
+            // Grid de números
+            const gridY = currentY + 8;
+            const startX = x + margin;
+            
+            for (let row = 0; row < 5; row++) {
+                for (let col = 0; col < 5; col++) {
+                    const cellX = startX + (col * cellSize);
+                    const cellY = gridY + (row * cellSize);
+                    
+                    // Fondo blanco semitransparente
+                    if (bgImageData) {
+                        // Método simple sin GState problemático
+                        pdf.setFillColor(255, 255, 255);
+                        pdf.rect(cellX, cellY, cellSize, cellSize, 'F');
+                    } else {
+                        pdf.setFillColor(255, 255, 255);
+                        pdf.rect(cellX, cellY, cellSize, cellSize, 'F');
+                    }
+                    
+                    pdf.setDrawColor(0, 0, 0);
+                    pdf.rect(cellX, cellY, cellSize, cellSize, 'S');
+                    
+                    const value = card.columns[letters[col]][row];
+                    if (value === 'FREE') {
+                        pdf.setFillColor(255, 235, 238);
+                        pdf.rect(cellX, cellY, cellSize, cellSize, 'F');
+                        pdf.rect(cellX, cellY, cellSize, cellSize, 'S');
+                        pdf.setFontSize(10);
+                        pdf.setFont('Helvetica', 'normal');
+                        pdf.text('FREE', cellX + cellSize/2, cellY + cellSize/2 + 2, { align: 'center' });
+                    } else {
+                        pdf.setFontSize(14);
+                        pdf.setFont('Helvetica', 'bold');
+                        pdf.text(value.toString(), cellX + cellSize/2, cellY + cellSize/2 + 2, { align: 'center' });
+                    }
+                }
+            }
+        }
+
+        // CONVERTIR HEX A RGB
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : { r: 0, g: 0, b: 0 };
+        }
+
+        // ACTUALIZAR VISTA PREVIA
+        function updatePreview() {
+            const previewContainer = document.getElementById('previewContainer');
+            const previewCard = generateSingleCard(1);
+            const bingoColor = document.getElementById('bingoColor').value;
+            const cardTitle = document.getElementById('cardTitle').value;
+            const titleFont = document.getElementById('titleFont').value;
+            const numberColor = document.getElementById('numberColor').value;
+            const numberFont = document.getElementById('numberFont').value;
+            
+            let cardClass = 'bingo-card-preview';
+            let bgStyle = '';
+            if (bgImageData) {
+                cardClass += ' has-bg';
+                bgStyle = `background-image: url(${bgImageData}); background-size: cover; background-position: center;`;
+            }
+            
+            let html = `<div class="${cardClass}" style="${bgStyle}">`;
+            
+            if (logoData) {
+                html += `<div style="text-align: center; margin-bottom: 5px; position: relative; z-index: 2;">
+                    <img src="${logoData}" style="max-width: 80px; max-height: 40px; display: inline-block;">
+                </div>`;
+            }
+            
+            html += `<div style="font-family: ${titleFont}; text-align: center; font-weight: bold; margin-bottom: 5px; font-size: 14px; position: relative; z-index: 2;">${cardTitle}</div>`;
+            html += `<div style="font-family: ${numberFont}; color: ${numberColor}; text-align: center; font-weight: bold; font-size: 20px; margin-bottom: 10px; position: relative; z-index: 2;">Cartón 1</div>`;
+            
+            html += `<div class="preview-bingo-header">`;
+            ['B', 'I', 'N', 'G', 'O'].forEach(letter => {
+                html += `<div class="preview-bingo-letter" style="background: ${bingoColor}; color: white;">${letter}</div>`;
+            });
+            html += `</div>`;
+            
+            html += `<div class="preview-bingo-grid">`;
+            for (let row = 0; row < 5; row++) {
+                ['B', 'I', 'N', 'G', 'O'].forEach(col => {
+                    const value = previewCard.columns[col][row];
+                    if (value === 'FREE') {
+                        html += `<div class="preview-free-space">FREE</div>`;
+                    } else {
+                        html += `<div class="preview-bingo-cell">${value}</div>`;
+                    }
+                });
+            }
+            html += `</div>`;
+            html += `</div>`;
+            
+            previewContainer.innerHTML = html;
+            document.getElementById('previewSection').style.display = 'block';
+        }
+
+        // GENERAR TODOS LOS CARTONES
+        async function generateBingoCards() {
+            const cardCount = parseInt(document.getElementById('cardCount').value);
+            
+            if (cardCount < 1 || cardCount > 2000) {
+                alert('Por favor, ingresa una cantidad entre 1 y 2000 cartones.');
+                return;
+            }
+
+            document.getElementById('generateBtn').disabled = true;
+            document.getElementById('loadingSection').style.display = 'block';
+            document.getElementById('progressBar').style.display = 'block';
+
+            try {
+                Object.keys(usedNumbers).forEach(key => usedNumbers[key].clear());
+
+                const cards = [];
+                for (let i = 1; i <= cardCount; i++) {
+                    cards.push(generateSingleCard(i));
+                    
+                    const progress = (i / cardCount) * 100;
+                    document.getElementById('progressFill').style.width = progress + '%';
+                    document.getElementById('loadingText').textContent = `Generando cartón ${i} de ${cardCount}...`;
+                    
+                    if (i % 50 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 1));
+                    }
+                }
+
+                document.getElementById('loadingText').textContent = 'Creando PDF...';
+                await generatePDF(cards);
+                
+                alert(`✅ ¡Éxito! Se generaron ${cards.length} cartones.`);
+            } catch (error) {
+                console.error('❌ ERROR:', error);
+                alert(`Error: ${error.message}\n\nIntenta con menos cartones o sin imagen de fondo.`);
+            } finally {
+                document.getElementById('generateBtn').disabled = false;
+                document.getElementById('loadingSection').style.display = 'none';
+                document.getElementById('progressBar').style.display = 'none';
+                document.getElementById('progressFill').style.width = '0%';
+            }
+        }
+
+        // GENERAR PDF
+        async function generatePDF(cards) {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            
+            const pageWidth = 210;
+            const margin = 10;
+            const cardWidth = 90;
+            const cardHeight = 120;
+            
+            let currentPage = 0;
+            const cardsPerPage = 2;
+            
+            for (let i = 0; i < cards.length; i += cardsPerPage) {
+                if (currentPage > 0) {
+                    pdf.addPage();
+                }
+                
+                // Número de página
+                pdf.setFontSize(20);
+                pdf.setTextColor(150, 150, 150);
+                pdf.setFont('Helvetica', 'bold');
+                pdf.text(String(currentPage + 1), pageWidth - 15, 20, { align: 'center' });
+                pdf.setTextColor(0, 0, 0);
+                
+                const pageCards = cards.slice(i, i + cardsPerPage);
+                
+                for (let j = 0; j < pageCards.length; j++) {
+                    const card = pageCards[j];
+                    const yPos = margin + 25 + (j * (cardHeight + 15));
+                    const xPos = (pageWidth - cardWidth) / 2;
+                    
+                    // Dibujar cada cartón con try-catch individual
+                    try {
+                        drawCardOnPDF(pdf, card, xPos, yPos, j + 1);
+                    } catch (cardError) {
+                        console.error(`Error en cartón ${i + j + 1}:`, cardError);
+                        alert(`Error en cartón ${i + j + 1}: ${cardError.message}`);
+                    }
+                }
+                
+                currentPage++;
+            }
+            
+            const timestamp = new Date().toISOString().slice(0, 10);
+            pdf.save(`BINGO_${timestamp}_${cards.length}_cartones.pdf`);
+        }
+    </script>
+</body>
+</html>
